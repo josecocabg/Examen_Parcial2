@@ -1,0 +1,77 @@
+#include <DHT.h>//libreria sensor 
+#include <Ethernet.h>//libreria ethernet
+#include <SPI.h>//libreria ethernet
+#include <MySQL_Connection.h>
+#include<MySQL_Cursor.h>
+
+
+// CONSTRUCTOR DEL OBJETO DHT RECIBE EL PIN EN EL QUE SE CONECTA EL SENSOR
+// Y TAMBIEN RECIBE EL TIPO DE SENSOR QUE VAMOS A CONECTAR
+
+DHT dht(A2, DHT11);
+char user[]=" arduino";
+String estado;
+int hum, temp;//constantes para humedad
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFF, 0xEE}; // Direccion MAC
+byte ip[] = { 192,168,1,11 }; // Direccion IP 
+byte server[] = { 192,168,0,10}; // Direccion IP del servidor
+EthernetClient cliente;
+ 
+void setup() {
+  // PREPARAR LA COMUNICACION SERIAL
+  Serial.begin(9600);
+  Ethernet.begin(mac, ip);
+  Serial.println("Prueba del sensor DHT11");
+  
+  // PREPARAR LA LIBRERIA PARA COMUNICARSE CON EL SENSOR
+  dht.begin();
+}
+ 
+void loop() {
+  // Eesperar
+  delay(2000);
+  
+  //Lee Humedad 
+  float hum = dht.readHumidity();
+  // Leer la temperatura usando temperature
+  float temp = dht.readTemperature();
+  if (isnan(hum) || isnan(temp)) {
+    Serial.println("Falla al leer el sensor DHT11!");
+    return;
+  }
+ 
+  // Imprimir
+  Serial.print("Humedad: ");
+  Serial.print(hum);
+  Serial.print(" % ");
+  Serial.print("Temperatura: ");
+  Serial.print(temp);
+  Serial.println(" *C");
+
+  Serial.println("Envio de dato, conectando...");
+  if (cliente.connect(server, 80)>0) {  // Conexion con el servidor(client.connect(server, 80)>0
+    cliente.print("GET /Esteequipo/Discolocal(C:)/arduino/mysql.php?valor=");
+    
+    cliente.print("tabla_sensor" );// Enviamos los datos por GET
+
+    cliente.print("&hum_php=");
+    cliente.print(hum);
+    cliente.print("&temp_php=");
+    cliente.print(temp);
+    cliente.println("User-Agent: Arduino 1.0");
+    cliente.println();
+    Serial.println("Envio con exito (http://localhost/phpmyadmin/sql.php?db=dht_se&table=tabla_sensor&pos=0)");
+    delay(1000);
+    } else {
+    Serial.println("Fallo en la conexion");
+        delay(2000);
+  }
+if (!cliente.connected()) {
+    Serial.println("Desconectando");
+    delay(1000);
+  }
+  cliente.stop();
+  cliente.flush();
+  
+  //delay(5000);
+}
